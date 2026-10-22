@@ -1,0 +1,4 @@
+# Deny direct access to sensitive paths if document root is misconfigured
+<IfModule mod_authz_core.c>
+  Require all granted
+</IfModule>

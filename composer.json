@@ -1,0 +1,13 @@
+{
+  "name": "thehealnest/admin",
+  "description": "The Heal Nest admin panel — Google OAuth (Gmail, Drive, Photos)",
+  "require": {
+    "php": ">=8.1",
+    "google/apiclient": "^2.15"
+  },
+  "autoload": {
+    "psr-4": {
+      "HealNest\\": "lib/"
+    }
+  }
+}
