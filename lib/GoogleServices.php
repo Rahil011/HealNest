@@ -16,10 +16,10 @@ final class GoogleServices
     public static function listGmailMessages(GoogleClient $client, int $max = 25): array
     {
         $gmail = new Gmail($client);
-        $list = $gmail->users_messages->listUsersMessages('me', [
+        $list = self::callGmail(fn () => $gmail->users_messages->listUsersMessages('me', [
             'maxResults' => $max,
             'labelIds' => ['INBOX'],
-        ]);
+        ]));
 
         $messages = $list->getMessages() ?? [];
         $out = [];
@@ -44,7 +44,7 @@ final class GoogleServices
     public static function getGmailMessage(GoogleClient $client, string $messageId): ?array
     {
         $gmail = new Gmail($client);
-        $msg = $gmail->users_messages->get('me', $messageId, ['format' => 'full']);
+        $msg = self::callGmail(fn () => $gmail->users_messages->get('me', $messageId, ['format' => 'full']));
         $headers = self::headersMap($msg->getPayload()?->getHeaders() ?? []);
         $body = self::extractBody($msg->getPayload());
 
@@ -92,19 +92,36 @@ final class GoogleServices
         if ($threadId !== null && $threadId !== '') {
             $message->setThreadId($threadId);
         }
-        $gmail->users_messages->send('me', $message);
+        self::callGmail(fn () => $gmail->users_messages->send('me', $message));
     }
 
     public static function trashGmailMessage(GoogleClient $client, string $messageId): void
     {
         $gmail = new Gmail($client);
-        $gmail->users_messages->trash('me', $messageId);
+        self::callGmail(fn () => $gmail->users_messages->trash('me', $messageId));
     }
 
     public static function deleteGmailMessage(GoogleClient $client, string $messageId): void
     {
         $gmail = new Gmail($client);
-        $gmail->users_messages->delete('me', $messageId);
+        self::callGmail(fn () => $gmail->users_messages->delete('me', $messageId));
+    }
+
+    /**
+     * @template T
+     * @param callable(): T $fn
+     * @return T
+     */
+    private static function callGmail(callable $fn)
+    {
+        try {
+            return $fn();
+        } catch (\Google\Service\Exception $e) {
+            if ((int) $e->getCode() === 403) {
+                throw new \RuntimeException('GMAIL_SCOPE_MISSING', 403, $e);
+            }
+            throw $e;
+        }
     }
 
     /**
@@ -112,10 +129,10 @@ final class GoogleServices
      */
     private static function messageHeaders(Gmail $gmail, string $id): ?array
     {
-        $msg = $gmail->users_messages->get('me', $id, [
+        $msg = self::callGmail(fn () => $gmail->users_messages->get('me', $id, [
             'format' => 'metadata',
             'metadataHeaders' => ['Subject', 'From', 'Date'],
-        ]);
+        ]));
         $map = self::headersMap($msg->getPayload()?->getHeaders() ?? []);
 
         return [

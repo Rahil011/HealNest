@@ -23,4 +23,8 @@ return [
 
     'session_name' => 'healnest_admin_session',
     'app_base_path' => dirname(__DIR__),
+
+    /** Session booking form — where requests are sent */
+    'booking_to_email' => 'your@gmail.com',
+    'booking_from_email' => 'your@gmail.com',
 ];

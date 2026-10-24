@@ -13,11 +13,14 @@ require dirname(__DIR__) . '/lib/helpers.php';
 HealNest\Session::start($config);
 
 $connected = HealNest\GoogleAuth::isMailConnected($config);
+$gmailOk = HealNest\GoogleAuth::hasGmailReadScope($config);
 $connectedEmail = HealNest\GoogleAuth::getConnectedEmail($config);
 $success = isset($_GET['success']);
 $disconnected = isset($_GET['disconnected']);
+$scopeError = isset($_GET['error']) && $_GET['error'] === 'gmail_scope';
 $allowed = googleAllowedEmail($config);
 $redirectPreview = HealNest\OAuthRedirect::resolve($config);
+$accessLevel = HealNest\GoogleAuth::gmailAccessLevel($config);
 
 ?>
 <!DOCTYPE html>
@@ -34,22 +37,34 @@ $redirectPreview = HealNest\OAuthRedirect::resolve($config);
 <body>
   <main class="login-card">
     <h1>Mail setup</h1>
-    <p>One-time Google authorization for The Heal Nest.</p>
+    <p>Connect Gmail for The Heal Nest admin panel.</p>
 
-    <?php if ($disconnected): ?>
-      <div class="alert alert-info">Google account disconnected.</div>
+    <?php if ($scopeError): ?>
+      <div class="alert alert-error">Gmail access was not granted. On the Google screen, expand permissions and allow <strong>Read, compose, send, and permanently delete</strong> (or at least read your email). Then try again.</div>
     <?php endif; ?>
-    <?php if ($success): ?>
-      <div class="alert alert-info">Google account connected successfully.</div>
-    <?php elseif ($connected): ?>
+    <?php if ($disconnected): ?>
+      <div class="alert alert-info">Google account disconnected. Connect again below.</div>
+    <?php endif; ?>
+    <?php if ($success && $gmailOk): ?>
+      <div class="alert alert-info">Gmail connected successfully.</div>
+    <?php elseif ($connected && $gmailOk): ?>
       <div class="alert alert-info">
-        Mail is already connected<?= $connectedEmail ? ' as ' . h($connectedEmail) : '' ?>.
+        Gmail is connected<?= $connectedEmail ? ' as ' . h($connectedEmail) : '' ?>.
+        <?php if ($accessLevel === 'read_write'): ?>
+          <span class="access-badge access-badge--write">Read &amp; write</span>
+        <?php else: ?>
+          <span class="access-badge access-badge--read">Read-only</span>
+        <?php endif; ?>
+        <a href="login.php">Admin login</a>
       </div>
     <?php else: ?>
+      <?php if ($connected && !$gmailOk): ?>
+        <div class="alert alert-error">Account is linked but <strong>Gmail permission is missing</strong> on the token. Authorize Gmail below (use <?= h($allowed) ?>).</div>
+      <?php endif; ?>
       <p style="font-size:14px;color:#6b6459;margin-bottom:20px;line-height:1.6;">
-        Click below and sign in with <strong><?= h($allowed) ?></strong>. This step is only needed once to connect your Mail to the Heal Nest to receive emails.
+        Sign in with <strong><?= h($allowed) ?></strong> and approve <strong>all Gmail permissions</strong> shown by Google.
       </p>
-      <a class="btn btn-primary" href="oauth-start.php?flow=connect">Connect Google account</a>
+      <a class="btn btn-primary" href="oauth-start.php?flow=connect">Authorize Gmail access</a>
     <?php endif; ?>
 
   </main>

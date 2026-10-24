@@ -12,6 +12,11 @@ if (!HealNest\GoogleAuth::isMailConnected($config)) {
     exit;
 }
 
+if (!HealNest\GoogleAuth::hasGmailReadScope($config)) {
+    header('Location: connect-mail.php');
+    exit;
+}
+
 $client = HealNest\GoogleAuth::clientWithToken($config);
 $apiError = null;
 $flash = '';
@@ -19,12 +24,17 @@ $gmail = [];
 $viewMessage = null;
 $compose = isset($_GET['compose']);
 $replyTo = null;
+$canReadGmail = HealNest\GoogleAuth::hasGmailReadScope($config);
+$canWriteGmail = HealNest\GoogleAuth::hasGmailModifyScope($config);
 
 if ($client === null) {
     $apiError = 'Google access expired or missing. Use Reconnect Google while signed in as admin.';
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && $client !== null) {
     $action = (string) ($_POST['action'] ?? '');
     try {
+        if (in_array($action, ['send', 'trash', 'delete'], true) && !$canWriteGmail) {
+            throw new RuntimeException('Write access requires gmail.modify. Reconnect Google and approve send/manage mail, or use read-only inbox if gmail.readonly is granted.');
+        }
         if ($action === 'send') {
             $to = trim((string) ($_POST['to'] ?? ''));
             $subject = trim((string) ($_POST['subject'] ?? ''));
@@ -67,6 +77,10 @@ if ($client === null) {
 }
 
 if ($client !== null && $apiError === null) {
+    if ($compose && !$canWriteGmail) {
+        header('Location: dashboard.php');
+        exit;
+    }
     try {
         $viewId = (string) ($_GET['view'] ?? '');
         if ($viewId !== '') {
@@ -82,7 +96,11 @@ if ($client !== null && $apiError === null) {
             $gmail = HealNest\GoogleServices::listGmailMessages($client);
         }
     } catch (Throwable $e) {
-        $apiError = 'Could not load mail. (' . $e->getMessage() . ')';
+        if ($e->getMessage() === 'GMAIL_SCOPE_MISSING') {
+            $apiError = 'Gmail permission missing or outdated on this token. Click Reconnect Google (or connect-mail) and allow Gmail read at minimum; allow send/manage for compose and delete. Ensure config.php uses the same OAuth Client ID as when the token was created.';
+        } else {
+            $apiError = 'Could not load mail. (' . $e->getMessage() . ')';
+        }
     }
 }
 
@@ -94,9 +112,14 @@ if (isset($_GET['sent'])) {
     $flash = 'Message permanently deleted.';
 }
 
-$scopeWarning = $client !== null && !HealNest\GoogleAuth::hasGmailModifyScope($config);
+$scopeWarning = $client !== null && $canReadGmail && !$canWriteGmail;
 $adminUser = HealNest\Session::adminEmail() ?? '';
 $connectedGoogle = HealNest\GoogleAuth::getConnectedEmail($config) ?? '';
+$gmailAccessLevel = HealNest\GoogleAuth::gmailAccessLevel($config);
+$gmailAccessLabel = HealNest\GoogleAuth::gmailAccessLabel($config);
+$tokenActive = $client !== null;
+$inboxGranted = HealNest\GoogleAuth::isGmailInboxVisible($config);
+$inboxVisible = $tokenActive && $inboxGranted;
 
 function parseReplyEmail(string $from): string
 {
@@ -127,7 +150,9 @@ function parseReplyEmail(string $from): string
     </div>
     <div class="admin-actions">
       <a class="btn btn-ghost" href="../index.html">Public site</a>
-      <a class="btn btn-primary" href="dashboard.php?compose=1">Compose</a>
+      <?php if ($canWriteGmail): ?>
+        <a class="btn btn-primary" href="dashboard.php?compose=1">Compose</a>
+      <?php endif; ?>
       <a class="btn btn-ghost" href="oauth-start.php?flow=reconnect">Reconnect Google</a>
       <form method="post" action="disconnect-google.php" class="inline-form" onsubmit="return confirm('Disconnect Gmail from the admin panel?');">
         <button type="submit" class="btn btn-danger">Disconnect Gmail</button>
@@ -137,8 +162,56 @@ function parseReplyEmail(string $from): string
   </header>
 
   <main class="admin-main">
+    <aside class="mail-connection panel" aria-label="Gmail connection status">
+      <h2 class="mail-connection-title">Email connection</h2>
+      <dl class="mail-connection-list">
+        <div>
+          <dt>Google account</dt>
+          <dd><?= $connectedGoogle !== '' ? h($connectedGoogle) : '—' ?></dd>
+        </div>
+        <div>
+          <dt>Token</dt>
+          <dd>
+            <?php if ($tokenActive): ?>
+              <span class="access-badge access-badge--ok">Active</span>
+            <?php else: ?>
+              <span class="access-badge access-badge--bad">Inactive — reconnect</span>
+            <?php endif; ?>
+          </dd>
+        </div>
+        <div>
+          <dt>Gmail access</dt>
+          <dd>
+            <?php if ($gmailAccessLevel === 'read_write'): ?>
+              <span class="access-badge access-badge--write">Read &amp; write</span>
+              <span class="access-hint">Inbox, compose, reply, trash, delete</span>
+            <?php elseif ($gmailAccessLevel === 'readonly'): ?>
+              <span class="access-badge access-badge--read">Read-only</span>
+              <span class="access-hint">Inbox &amp; view messages</span>
+            <?php else: ?>
+              <span class="access-badge access-badge--bad">Not granted</span>
+              <span class="access-hint"><a href="connect-mail.php">Authorize Gmail</a></span>
+            <?php endif; ?>
+          </dd>
+        </div>
+        <div>
+          <dt>Inbox in admin</dt>
+          <dd>
+            <?php if ($inboxVisible): ?>
+              <span class="access-badge access-badge--ok">Visible</span>
+              <span class="access-hint">Read-only or read &amp; write</span>
+            <?php else: ?>
+              <span class="access-badge access-badge--bad">Hidden</span>
+              <span class="access-hint">Connect Gmail with read or send permission</span>
+            <?php endif; ?>
+          </dd>
+        </div>
+      </dl>
+      <p class="mail-connection-note"><?= h($gmailAccessLabel) ?> · Stored on server (works from any device with admin login).</p>
+    </aside>
+
     <?php if ($scopeWarning): ?>
-      <div class="alert alert-info">Your token only has read-only Gmail access. <a href="oauth-start.php?flow=reconnect"><strong>Reconnect Google</strong></a> and approve <strong>send and manage mail</strong> permissions.</div>
+      <div class="alert alert-info"><strong>Read-only mode.</strong> You can view inbox and messages. To send, reply, trash, or delete, <a href="oauth-start.php?flow=reconnect"><strong>Reconnect Google</strong></a> and approve <strong>send and manage mail</strong>.</div>
     <?php endif; ?>
     <?php if ($flash !== ''): ?>
       <div class="alert alert-info"><?= h($flash) ?></div>
@@ -185,19 +258,21 @@ function parseReplyEmail(string $from): string
           <div><strong>Date:</strong> <?= h($viewMessage['date']) ?></div>
         </div>
         <div class="mail-body"><?= nl2br(h($viewMessage['body'])) ?></div>
-        <div class="mail-actions" style="margin-top:24px;display:flex;flex-wrap:wrap;gap:10px;">
-          <a class="btn btn-primary" href="dashboard.php?reply=<?= urlencode($viewMessage['id']) ?>">Reply</a>
-          <form method="post" action="dashboard.php" class="inline-form" onsubmit="return confirm('Move this message to trash?');">
-            <input type="hidden" name="action" value="trash">
-            <input type="hidden" name="message_id" value="<?= h($viewMessage['id']) ?>">
-            <button type="submit" class="btn btn-ghost">Move to trash</button>
-          </form>
-          <form method="post" action="dashboard.php" class="inline-form" onsubmit="return confirm('Permanently delete this message? This cannot be undone.');">
-            <input type="hidden" name="action" value="delete">
-            <input type="hidden" name="message_id" value="<?= h($viewMessage['id']) ?>">
-            <button type="submit" class="btn btn-danger">Delete permanently</button>
-          </form>
-        </div>
+        <?php if ($canWriteGmail): ?>
+          <div class="mail-actions" style="margin-top:24px;display:flex;flex-wrap:wrap;gap:10px;">
+            <a class="btn btn-primary" href="dashboard.php?reply=<?= urlencode($viewMessage['id']) ?>">Reply</a>
+            <form method="post" action="dashboard.php" class="inline-form" onsubmit="return confirm('Move this message to trash?');">
+              <input type="hidden" name="action" value="trash">
+              <input type="hidden" name="message_id" value="<?= h($viewMessage['id']) ?>">
+              <button type="submit" class="btn btn-ghost">Move to trash</button>
+            </form>
+            <form method="post" action="dashboard.php" class="inline-form" onsubmit="return confirm('Permanently delete this message? This cannot be undone.');">
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="message_id" value="<?= h($viewMessage['id']) ?>">
+              <button type="submit" class="btn btn-danger">Delete permanently</button>
+            </form>
+          </div>
+        <?php endif; ?>
 
       <?php else: ?>
         <h2>Inbox</h2>
@@ -213,13 +288,15 @@ function parseReplyEmail(string $from): string
                     <div class="mail-meta"><?= h($m['from']) ?> · <?= h($m['date']) ?></div>
                     <div class="mail-snippet"><?= h($m['snippet']) ?></div>
                   </div>
-                  <div class="mail-row-actions">
-                    <form method="post" action="dashboard.php" class="inline-form" onsubmit="return confirm('Move to trash?');">
-                      <input type="hidden" name="action" value="trash">
-                      <input type="hidden" name="message_id" value="<?= h($m['id']) ?>">
-                      <button type="submit" class="btn btn-ghost btn-sm">Trash</button>
-                    </form>
-                  </div>
+                  <?php if ($canWriteGmail): ?>
+                    <div class="mail-row-actions">
+                      <form method="post" action="dashboard.php" class="inline-form" onsubmit="return confirm('Move to trash?');">
+                        <input type="hidden" name="action" value="trash">
+                        <input type="hidden" name="message_id" value="<?= h($m['id']) ?>">
+                        <button type="submit" class="btn btn-ghost btn-sm">Trash</button>
+                      </form>
+                    </div>
+                  <?php endif; ?>
                 </div>
               </li>
             <?php endforeach; ?>

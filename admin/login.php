@@ -33,7 +33,7 @@ $messages = [
     'mail_required' => 'Connect Gmail once using the mail setup URL before using the dashboard.',
 ];
 
-$mailReady = HealNest\GoogleAuth::isMailConnected($config);
+$mailReady = HealNest\GoogleAuth::isMailReadyForAdmin($config);
 
 ?>
 <!DOCTYPE html>

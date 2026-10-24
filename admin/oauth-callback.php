@@ -64,6 +64,13 @@ try {
     exit;
 }
 
+if (!HealNest\GoogleAuth::hasGmailReadScope($config)) {
+    HealNest\GoogleAuth::clearAccessTokenFile($config);
+    unset($_SESSION['oauth_flow']);
+    header('Location: connect-mail.php?error=gmail_scope');
+    exit;
+}
+
 if ($flow === 'reconnect') {
     unset($_SESSION['oauth_flow']);
     header('Location: dashboard.php');

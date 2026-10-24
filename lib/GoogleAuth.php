@@ -9,14 +9,17 @@ use Google\Service\Gmail;
 
 final class GoogleAuth
 {
-    /** Read, send, delete, and manage mail (not readonly). */
+    public const GMAIL_READONLY = 'https://www.googleapis.com/auth/gmail.readonly';
     public const GMAIL_MODIFY = 'https://www.googleapis.com/auth/gmail.modify';
+    /** Full Gmail access (Google may return this instead of separate readonly/modify URLs). */
+    public const GMAIL_FULL = 'https://mail.google.com/';
 
     /** @var list<string> */
     public const SCOPES = [
         'openid',
         'email',
         'profile',
+        Gmail::GMAIL_READONLY,
         Gmail::GMAIL_MODIFY,
     ];
 
@@ -54,8 +57,46 @@ final class GoogleAuth
             return;
         }
         $path = self::tokenPath($config);
+        $existing = [];
+        if (is_readable($path)) {
+            $decoded = json_decode((string) file_get_contents($path), true);
+            if (is_array($decoded)) {
+                $existing = $decoded;
+            }
+        }
+        $token = self::mergeTokenScopes($token, $existing);
+        if (empty($token['refresh_token']) && !empty($existing['refresh_token'])) {
+            $token['refresh_token'] = $existing['refresh_token'];
+        }
         file_put_contents($path, json_encode($token, JSON_THROW_ON_ERROR), LOCK_EX);
         chmod($path, 0600);
+    }
+
+    /**
+     * @param array<string, mixed> $token
+     * @param array<string, mixed> $existing
+     * @return array<string, mixed>
+     */
+    private static function mergeTokenScopes(array $token, array $existing): array
+    {
+        $newScope = trim((string) ($token['scope'] ?? ''));
+        $oldScope = trim((string) ($existing['scope'] ?? ''));
+        if ($newScope === '' && $oldScope !== '') {
+            $token['scope'] = $oldScope;
+
+            return $token;
+        }
+        if ($newScope !== '' && $oldScope !== '') {
+            $merged = array_unique(array_merge(
+                preg_split('/\s+/', $newScope) ?: [],
+                preg_split('/\s+/', $oldScope) ?: []
+            ));
+            $token['scope'] = implode(' ', array_filter($merged));
+
+            return $token;
+        }
+
+        return $token;
     }
 
     public static function loadToken(GoogleClient $client, array $config): bool
@@ -121,15 +162,73 @@ final class GoogleAuth
         return preg_split('/\s+/', trim($scope)) ?: [];
     }
 
-    public static function hasGmailModifyScope(array $config): bool
+    public static function hasGmailReadScope(array $config): bool
     {
         foreach (self::grantedScopes($config) as $scope) {
-            if ($scope === self::GMAIL_MODIFY || $scope === Gmail::GMAIL_MODIFY) {
+            if (in_array($scope, [
+                self::GMAIL_READONLY,
+                self::GMAIL_MODIFY,
+                self::GMAIL_FULL,
+                Gmail::GMAIL_READONLY,
+                Gmail::GMAIL_MODIFY,
+            ], true)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    public static function hasGmailModifyScope(array $config): bool
+    {
+        foreach (self::grantedScopes($config) as $scope) {
+            if (in_array($scope, [self::GMAIL_MODIFY, self::GMAIL_FULL, Gmail::GMAIL_MODIFY], true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Mail setup complete: connected with read-only and/or read & write Gmail scopes. */
+    public static function isMailReadyForAdmin(array $config): bool
+    {
+        return self::isMailConnected($config) && self::hasGmailReadScope($config);
+    }
+
+    /** @return bool Inbox may be shown in admin (read-only or read & write). */
+    public static function isGmailInboxVisible(array $config): bool
+    {
+        $level = self::gmailAccessLevel($config);
+
+        return $level === 'readonly' || $level === 'read_write';
+    }
+
+    public static function hasGmailReadonlyScopeOnly(array $config): bool
+    {
+        return self::hasGmailReadScope($config) && !self::hasGmailModifyScope($config);
+    }
+
+    /** @return 'none'|'readonly'|'read_write' */
+    public static function gmailAccessLevel(array $config): string
+    {
+        if (!self::hasGmailReadScope($config)) {
+            return 'none';
+        }
+        if (self::hasGmailModifyScope($config)) {
+            return 'read_write';
+        }
+
+        return 'readonly';
+    }
+
+    public static function gmailAccessLabel(array $config): string
+    {
+        return match (self::gmailAccessLevel($config)) {
+            'read_write' => 'Read & write (inbox, send, delete)',
+            'readonly' => 'Read-only (inbox & view)',
+            default => 'No Gmail permission on token',
+        };
     }
 
     public static function isMailConnected(array $config): bool
