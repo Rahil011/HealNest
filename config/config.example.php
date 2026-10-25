@@ -27,4 +27,13 @@ return [
     /** Session booking form — where requests are sent */
     'booking_to_email' => 'your@gmail.com',
     'booking_from_email' => 'your@gmail.com',
+
+    /**
+     * Booking delivery: auto | gmail_api | php_mail
+     * auto = Gmail API when connected with send permission (recommended).
+     */
+    'booking_send_method' => 'auto',
+
+    /** When false, auto will not use PHP mail() (avoids false "success" on Mac/local). */
+    'booking_fallback_php_mail' => false,
 ];

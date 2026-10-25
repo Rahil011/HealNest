@@ -19,6 +19,15 @@ if (!is_readable($configPath)) {
 
 $config = require $configPath;
 
+$vendorAutoload = dirname(__DIR__) . '/vendor/autoload.php';
+if (!is_readable($vendorAutoload)) {
+    http_response_code(500);
+    echo json_encode(['ok' => false, 'error' => 'Server dependencies missing. Run composer install on the host.']);
+    exit;
+}
+
+require $vendorAutoload;
+
 if (!empty($_POST['website'])) {
     echo json_encode(['ok' => true]);
     exit;
@@ -48,7 +57,6 @@ if (strlen($name) > 120 || strlen($mobile) > 30 || strlen($email) > 120 || strle
 }
 
 $to = (string) ($config['booking_to_email'] ?? 'rawatmanali226@gmail.com');
-$from = (string) ($config['booking_from_email'] ?? $to);
 $subject = 'New session booking — The Heal Nest';
 
 $body = implode("\n", [
@@ -64,21 +72,22 @@ $body = implode("\n", [
     '— Sent from The Heal Nest booking form',
 ]);
 
-$headers = [
-    'MIME-Version: 1.0',
-    'Content-Type: text/plain; charset=UTF-8',
-    'From: The Heal Nest <' . $from . '>',
-    'Reply-To: ' . $name . ' <' . $email . '>',
-];
+$result = HealNest\BookingMail::send($config, $to, $subject, $body, $name, $email);
 
-$sent = @mail($to, $subject, $body, implode("\r\n", $headers));
-
-if (!$sent) {
+if (!$result['ok']) {
     http_response_code(500);
-    echo json_encode([
-        'ok' => false,
-        'error' => 'Could not send email from the server. Please email us directly at ' . $to,
-    ]);
+    $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+    $isLocal = $host === 'localhost'
+        || str_starts_with($host, 'localhost:')
+        || $host === '127.0.0.1'
+        || str_starts_with($host, '127.0.0.1:');
+    $publicError = 'Could not send email from the server. Please email us directly at ' . $to;
+    $detail = trim((string) ($result['error'] ?? ''));
+    $payload = ['ok' => false, 'error' => $publicError];
+    if ($isLocal && $detail !== '') {
+        $payload['detail'] = $detail;
+    }
+    echo json_encode($payload);
     exit;
 }
 

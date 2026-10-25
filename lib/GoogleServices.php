@@ -11,15 +11,24 @@ use Google\Service\Gmail\Message;
 final class GoogleServices
 {
     /**
-     * @return list<array{id: string, subject: string, from: string, date: string, snippet: string}>
+     * @return array{
+     *   messages: list<array{id: string, subject: string, from: string, date: string, snippet: string}>,
+     *   nextPageToken: ?string,
+     *   resultSizeEstimate: ?int
+     * }
      */
-    public static function listGmailMessages(GoogleClient $client, int $max = 25): array
+    public static function listGmailMessages(GoogleClient $client, int $max = 50, ?string $pageToken = null): array
     {
+        $max = max(1, min(100, $max));
         $gmail = new Gmail($client);
-        $list = self::callGmail(fn () => $gmail->users_messages->listUsersMessages('me', [
+        $params = [
             'maxResults' => $max,
             'labelIds' => ['INBOX'],
-        ]));
+        ];
+        if ($pageToken !== null && $pageToken !== '') {
+            $params['pageToken'] = $pageToken;
+        }
+        $list = self::callGmail(fn () => $gmail->users_messages->listUsersMessages('me', $params));
 
         $messages = $list->getMessages() ?? [];
         $out = [];
@@ -35,7 +44,13 @@ final class GoogleServices
             }
         }
 
-        return $out;
+        $estimate = $list->getResultSizeEstimate();
+
+        return [
+            'messages' => $out,
+            'nextPageToken' => $list->getNextPageToken() ?: null,
+            'resultSizeEstimate' => is_int($estimate) ? $estimate : null,
+        ];
     }
 
     /**
@@ -67,7 +82,8 @@ final class GoogleServices
         string $subject,
         string $body,
         ?string $threadId = null,
-        ?string $inReplyTo = null
+        ?string $inReplyTo = null,
+        ?string $replyTo = null
     ): void {
         $oauth2 = new \Google\Service\Oauth2($client);
         $configEmail = (string) ($oauth2->userinfo->get()->getEmail() ?? 'me');
@@ -83,6 +99,9 @@ final class GoogleServices
         if ($inReplyTo !== null && $inReplyTo !== '') {
             $lines[] = 'In-Reply-To: ' . $inReplyTo;
             $lines[] = 'References: ' . $inReplyTo;
+        }
+        if ($replyTo !== null && $replyTo !== '') {
+            $lines[] = 'Reply-To: ' . $replyTo;
         }
         $raw = implode("\r\n", $lines) . "\r\n\r\n" . $body;
 

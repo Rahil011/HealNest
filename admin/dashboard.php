@@ -21,6 +21,10 @@ $client = HealNest\GoogleAuth::clientWithToken($config);
 $apiError = null;
 $flash = '';
 $gmail = [];
+$inboxNextPage = null;
+$inboxEstimate = null;
+$inboxPerPage = 50;
+$inboxPageToken = trim((string) ($_GET['page'] ?? ''));
 $viewMessage = null;
 $compose = isset($_GET['compose']);
 $replyTo = null;
@@ -93,7 +97,14 @@ if ($client !== null && $apiError === null) {
             $replyTo = HealNest\GoogleServices::getGmailMessage($client, $replyId);
             $compose = true;
         } else {
-            $gmail = HealNest\GoogleServices::listGmailMessages($client);
+            $inbox = HealNest\GoogleServices::listGmailMessages(
+                $client,
+                $inboxPerPage,
+                $inboxPageToken !== '' ? $inboxPageToken : null
+            );
+            $gmail = $inbox['messages'];
+            $inboxNextPage = $inbox['nextPageToken'];
+            $inboxEstimate = $inbox['resultSizeEstimate'];
         }
     } catch (Throwable $e) {
         if ($e->getMessage() === 'GMAIL_SCOPE_MISSING') {
@@ -276,6 +287,15 @@ function parseReplyEmail(string $from): string
 
       <?php else: ?>
         <h2>Inbox</h2>
+        <?php if (!$apiError): ?>
+          <p class="inbox-summary">
+            Showing <?= count($gmail) ?> message<?= count($gmail) === 1 ? '' : 's' ?>
+            (up to <?= (int) $inboxPerPage ?> per page, <strong>Inbox</strong> only — not your full Gmail account).
+            <?php if ($inboxEstimate !== null): ?>
+              Gmail reports about <?= (int) $inboxEstimate ?> in Inbox.
+            <?php endif; ?>
+          </p>
+        <?php endif; ?>
         <?php if (!$apiError && count($gmail) === 0): ?>
           <p class="panel-empty">Inbox is empty or no messages loaded.</p>
         <?php elseif (!$apiError): ?>
@@ -301,6 +321,14 @@ function parseReplyEmail(string $from): string
               </li>
             <?php endforeach; ?>
           </ul>
+          <nav class="inbox-pager" aria-label="Inbox pages">
+            <?php if ($inboxPageToken !== ''): ?>
+              <a class="btn btn-ghost btn-sm" href="dashboard.php">Newest messages</a>
+            <?php endif; ?>
+            <?php if ($inboxNextPage !== null && $inboxNextPage !== ''): ?>
+              <a class="btn btn-ghost btn-sm" href="dashboard.php?page=<?= urlencode($inboxNextPage) ?>">Older messages</a>
+            <?php endif; ?>
+          </nav>
         <?php endif; ?>
       <?php endif; ?>
 

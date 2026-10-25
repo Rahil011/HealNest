@@ -85,7 +85,10 @@
         const data = await response.json();
 
         if (!response.ok || !data.ok) {
-          throw new Error(data.error || "Something went wrong. Please try again.");
+          const msg = data.detail
+            ? `${data.error}\n\n(${data.detail})`
+            : data.error || "Something went wrong. Please try again.";
+          throw new Error(msg);
         }
 
         if (bookingSuccess) {
