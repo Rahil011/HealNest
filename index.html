@@ -18,26 +18,31 @@
 <body>
 
   <nav>
-    <div class="wrap">
-      <a href="#" class="logo-mark" aria-label="The Heal Nest home">
+    <div class="wrap nav-shell">
+      <div class="nav-col nav-col--start">
+        <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+        <div class="nav-links">
+          <a href="#about">About</a>
+          <a href="#services">Services</a>
+          <a href="#approach">Approach</a>
+          <a href="#testimonial">Stories</a>
+        </div>
+      </div>
+      <a href="#" class="logo-mark nav-logo" aria-label="The Heal Nest home">
         <span class="the">the</span><span class="heal">Heal</span><span class="nest">nest</span>
       </a>
-      <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false">
-        <span></span><span></span><span></span>
-      </button>
-      <div class="nav-links">
-        <a href="#about">About</a>
-        <a href="#services">Services</a>
-        <a href="#approach">Approach</a>
-        <a href="#testimonial">Stories</a>
-      </div>
-      <div class="nav-actions">
-        <a href="#" class="nav-cta book-trigger">Book a session</a>
+      <div class="nav-col nav-col--end nav-actions">
+        <a href="#" class="nav-cta book-trigger">
+          <span class="nav-cta__label nav-cta__label--long">Book a session</span>
+          <span class="nav-cta__label nav-cta__label--short">Book</span>
+        </a>
         <div class="social-links social-links--nav" aria-label="Social profiles">
           <a href="https://www.instagram.com/thehealnest_" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
             <img src="assets/images/icon-instagram.svg" alt="" width="18" height="18">
           </a>
-          <a href="https://www.linkedin.com/in/manalli-rawat226" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+          <a href="https://www.linkedin.com/in/manalli-rawat226" class="social-link social-link--linkedin" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
             <img src="assets/images/icon-linkedin.svg" alt="" width="18" height="18">
           </a>
         </div>
@@ -47,8 +52,15 @@
 
   <section class="hero">
     <div class="wrap hero-grid">
-      <div>
-        <span class="eyebrow">Counselling psychologist · M.A. Silver Medallist · Ph.D. scholar</span>
+      <div class="hero-copy">
+        <div class="hero-credentials" aria-label="Professional credentials">
+          <span class="hero-credentials__role">Counselling psychologist</span>
+          <span class="hero-credentials__badge hero-credentials__badge--featured">
+            <span class="hero-credentials__star" aria-hidden="true">✦</span>
+            M.A. Silver Medallist
+          </span>
+          <span class="hero-credentials__badge hero-credentials__badge--phd">Ph.D. scholar</span>
+        </div>
         <h1>A quiet place<br>to land, before<br>you learn to <em>fly</em> again.</h1>
         <p class="lede">The Heal Nest offers calm, confidential one-to-one counselling with Manali Rawat — grounded in academic training and human-centred care for anxiety, relationships, self-esteem, and life’s quieter struggles.</p>
         <div class="hero-actions">
@@ -78,12 +90,30 @@
     </div>
   </section>
 
-  <div class="trust">
+  <div class="trust" aria-label="Practice highlights">
     <div class="wrap">
-      <span><span class="dot"></span> M.A. Psychology · Silver Medallist</span>
-      <span><span class="dot"></span> Pursuing Ph.D. in Psychology</span>
-      <span><span class="dot"></span> Confidential 1:1 sessions</span>
-      <span><span class="dot"></span> Online &amp; in-person</span>
+      <ul class="trust-grid">
+        <li class="trust-item">
+          <span class="trust-item__eyebrow">Therapeutic focus</span>
+          <span class="trust-item__title">Whole-person care</span>
+          <span class="trust-item__desc">Anxiety, mood &amp; self-esteem</span>
+        </li>
+        <li class="trust-item">
+          <span class="trust-item__eyebrow">Relational work</span>
+          <span class="trust-item__title">Relationships</span>
+          <span class="trust-item__desc">Communication &amp; boundaries</span>
+        </li>
+        <li class="trust-item">
+          <span class="trust-item__eyebrow">Ethical practice</span>
+          <span class="trust-item__title">Confidential</span>
+          <span class="trust-item__desc">One-to-one sessions</span>
+        </li>
+        <li class="trust-item">
+          <span class="trust-item__eyebrow">Client-centred</span>
+          <span class="trust-item__title">Flexible</span>
+          <span class="trust-item__desc">Online &amp; in-person</span>
+        </li>
+      </ul>
     </div>
   </div>
 
@@ -98,28 +128,35 @@
       </div>
       <div class="about-copy">
         <span class="eyebrow">About Manali</span>
-        <h3 style="margin-top:16px;">Thoughtful counselling, backed by rigorous training.</h3>
-        <p>I'm <strong>Manali Rawat</strong>, a counselling psychologist offering ethical, evidence-informed support in a space that feels safe — not clinical. My approach combines academic depth with warmth, so you can speak openly without judgement.</p>
-        <p class="about-details">M.A. in Psychology (Silver Medallist), Integral University, Lucknow. Internships at Rainbow and Astha Centre, Lucknow. Currently pursuing a <strong>Ph.D. in Psychology</strong>, with ongoing research and practice in mental health and wellbeing.</p>
-        <p>The Heal Nest is my independent practice: a place to pause, reflect, and rebuild — whether you are facing anxiety, relationship difficulty, academic pressure, low self-worth, or the steady weight of everyday stress.</p>
-        <div class="credentials">
-          <div class="credential credential-highlight">
-            <div class="num">Silver</div>
-            <div class="label">Medallist · M.A. Psychology, Integral University</div>
-          </div>
-          <div class="credential credential-highlight">
-            <div class="num">Ph.D.</div>
-            <div class="label">Pursuing · Psychology (in progress)</div>
-          </div>
-          <div class="credential">
-            <div class="num">Intern</div>
-            <div class="label">Rainbow &amp; Astha Centre, Lucknow</div>
-          </div>
-          <div class="credential">
-            <div class="num">1:1</div>
-            <div class="label">Personalised · online &amp; in-person</div>
-          </div>
-        </div>
+        <h3 class="about-heading">Thoughtful counselling, backed by rigorous training.</h3>
+        <p class="about-lead">I'm <strong>Manali Rawat</strong>, a counselling psychologist offering ethical, evidence-informed support in a space that feels safe — not clinical. My approach combines academic depth with warmth, so you can speak openly without judgement.</p>
+        <aside class="about-highlight" aria-label="Qualifications summary">
+          <p>M.A. Psychology · <strong>Silver Medallist</strong>, Integral University, Lucknow · Internships at Rainbow &amp; Astha Centre · Currently pursuing <strong>Ph.D. in Psychology</strong>.</p>
+        </aside>
+        <p class="about-body">The Heal Nest is my independent practice: a place to pause, reflect, and rebuild — whether you are facing anxiety, relationship difficulty, academic pressure, low self-worth, or the steady weight of everyday stress.</p>
+        <ul class="credentials" aria-label="Credentials">
+          <li class="credential credential--featured">
+            <span class="credential__kicker">Award</span>
+            <span class="credential__title">Silver Medallist</span>
+            <span class="credential__meta">M.A. Psychology · Integral University</span>
+          </li>
+          <li class="credential credential--featured">
+            <span class="credential__kicker">Research</span>
+            <span class="credential__title">Ph.D. scholar</span>
+            <span class="credential__meta">Psychology (in progress)</span>
+          </li>
+          <li class="credential">
+            <span class="credential__kicker">Clinical</span>
+            <span class="credential__title">Internships</span>
+            <span class="credential__meta">Rainbow &amp; Astha Centre, Lucknow</span>
+          </li>
+          <li class="credential">
+            <span class="credential__kicker">Sessions</span>
+            <span class="credential__title">Personalised 1:1</span>
+            <span class="credential__meta">Online &amp; in-person</span>
+          </li>
+        </ul>
+        <a href="#" class="btn-primary book-trigger about-cta">Book a first session</a>
       </div>
     </div>
   </section>

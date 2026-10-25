@@ -65,6 +65,28 @@
     }
   };
 
+  const trustStrip = document.querySelector(".trust");
+  if (trustStrip) {
+    trustStrip.classList.add("trust--motion");
+    const revealTrust = () => trustStrip.classList.add("is-visible");
+    if ("IntersectionObserver" in window) {
+      const trustObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              revealTrust();
+              trustObserver.disconnect();
+            }
+          });
+        },
+        { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
+      );
+      trustObserver.observe(trustStrip);
+    } else {
+      revealTrust();
+    }
+  }
+
   if (bookingForm && bookingSubmit) {
     bookingForm.addEventListener("submit", async (event) => {
       event.preventDefault();
